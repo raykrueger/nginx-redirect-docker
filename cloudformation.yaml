@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Select the EC2 SecurityGroup the nginx-redirect service should run behind
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet::Id
+    Description: Select a private subnet the task should run in
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet::Id
+    Description: Select a private subnet the task should run in
+Resources:
+  Cluster:
+    Type: "AWS::ECS::Cluster"
+    Properties:
+      ClusterName: "nginx-redirect"
+  NginxTask:
+    Type: "AWS::ECS::TaskDefinition"
+    Properties: 
+      Cpu: "512"
+      Memory: "1GB"
+      NetworkMode: "awsvpc"
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: "nginx-redirect"
+          Image: "raykrueger/nginx-redirect-docker"
+  NginxService:
+    Type: "AWS::ECS::Service"
+    Properties: 
+      Cluster: !Ref "Cluster"
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      DesiredCount: 1
+      #HealthCheckGracePeriodSeconds: 5
+      LaunchType: "FARGATE"
+      #LoadBalancers:
+      #  - Load Balancer Objects, ...
+      NetworkConfiguration: 
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups: 
+            - !Ref SecurityGroup
+          Subnets:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+      #PlacementConstraints: 
+      # - PlacementConstraints, ...
+      #PlacementStrategies: 
+      # - PlacementStrategies, ...
+      #PlatformVersion: String
+      #Role: String
+      ServiceName: "nginx-service"
+      TaskDefinition: !Ref "NginxTask"
+  TargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      #Name: 
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /nginx-health
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 1
+      HealthyThresholdCount: 2
+      #Matcher: Matcher
+      Port: 80
+      Protocol: HTTP
+      Targets:
+        - TargetDescription
+      TargetType: String
+      UnhealthyThresholdCount: Integer
+      VpcId: String
+    
